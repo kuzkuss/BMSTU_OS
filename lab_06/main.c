@@ -9,9 +9,11 @@
 
 #define ITERS 7
 
-#define RSLEEP 4000
+#define MIN_RSLEEP 3000
+#define MAX_RSLEEP 5000
 
-#define WSLEEP 2000
+#define MIN_WSLEEP 1000
+#define MAX_WSLEEP 3000
 
 HANDLE mutex;
 HANDLE can_read;
@@ -28,15 +30,15 @@ void start_write(void)
 {
     InterlockedIncrement(&waiting_writers);
 
-    if (active_readers > 0)
+    if (WaitForSingleObject(can_read, 0) == WAIT_OBJECT_0)
         WaitForSingleObject(can_write, INFINITE);
 
     InterlockedDecrement(&waiting_writers);
-    ResetEvent(can_write);
 }
 
 void stop_write(void)
 {
+    ResetEvent(can_write);
     if (waiting_readers == 0)
         SetEvent(can_write);
     else
@@ -53,8 +55,8 @@ void start_read(void)
     WaitForSingleObject(mutex, INFINITE);
 
     InterlockedDecrement(&waiting_readers);
-    SetEvent(can_read);
     InterlockedIncrement(&active_readers);
+    SetEvent(can_read);
 
     ReleaseMutex(mutex);
 }
